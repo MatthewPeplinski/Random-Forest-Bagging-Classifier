@@ -1,0 +1,75 @@
+"""
+This program uses random forests and linear classifiers to classify precipitation types
+Note: trains and tests on the full dataset so is more likely to overfit
+
+https://www.kaggle.com/datasets/nikhil7280/weather-type-classification
+"""
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+from sklearn.svm import LinearSVC
+
+
+df = pd.read_csv("weather_classification_data.csv")
+df.dropna(inplace=True)
+df['Cloud Cover'] = df['Cloud Cover'].replace({'clear':0, 'partly cloudy':1, 'overcast':2, 'cloudy':3})
+df['Season'] = df['Season'].replace({'Winter':0, 'Spring':1, 'Summer':2, 'Autumn':3})
+
+y = df.iloc[:, -1].to_numpy()
+X = df.iloc[:, 0:7].to_numpy()
+
+
+#Gridsearch for the proper max depth of random forests
+#question: when using "verbose" it shows that there are 100 RF generated, is this a param in the gridsearch
+clf = RandomForestClassifier()
+parameters = {"max_depth": range(3,15)}
+grid_search = GridSearchCV(clf, param_grid = parameters, cv=5)
+grid_search.fit(X, y)
+score_df = pd.DataFrame(grid_search.cv_results_)
+print(score_df[["param_max_depth", "mean_test_score", "rank_test_score"]])
+maxD = grid_search.best_params_["max_depth"]
+clf = RandomForestClassifier(max_depth=maxD, oob_score=True, n_jobs=-1)
+clf.fit(X, y)
+
+print(f"RF Score (Train): {clf.score(X, y):.3f}")
+print(f"RF Score (Test): {clf.score(X, y):.3f}")
+print(f"OOB Score: {clf.oob_score_:.3f}")
+
+#Show the results of the max depth grid searched random forest
+cm = confusion_matrix(y, clf.predict(X), normalize="true")
+disp_cm = ConfusionMatrixDisplay(cm, display_labels=clf.classes_)
+disp_cm.plot()
+plt.show()
+
+importance = pd.DataFrame(clf.feature_importances_, index=df.columns[0:7])
+importance.plot.bar()
+plt.show()
+
+#Bagging Classifier, using Linear SVC to save on computation time
+clfLin = LinearSVC(C = 1.0)
+bag_clf = BaggingClassifier(clfLin)
+parameters_Bagging = {"max_features":np.linspace(0.1,1, num=10), "n_estimators":range(1,20)}
+grid_search_bagging = GridSearchCV(bag_clf, parameters_Bagging, cv=5)
+grid_search_bagging.fit(X,y)
+mFeatures = grid_search_bagging.best_params_["max_features"]
+nEstimators = grid_search_bagging.best_params_["n_estimators"]
+bag_clf = BaggingClassifier(clfLin, max_features=mFeatures,n_estimators=nEstimators,
+                            oob_score=True, n_jobs=-1)
+bag_clf.fit(X, y)
+
+#displays results as a confusion matrix
+cm = confusion_matrix(y, bag_clf.predict(X), normalize="true")
+disp_cm = ConfusionMatrixDisplay(cm, display_labels=bag_clf.classes_)
+disp_cm.plot()
+plt.show()
+
+
+print(f"Bagging Score (Train): {bag_clf.score(X, y):.3f}")
+print(f"Bagging Score (Test): {bag_clf.score(X, y):.3f}")
+
+
+

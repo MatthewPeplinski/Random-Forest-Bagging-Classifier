@@ -1,0 +1,18 @@
+Info:
+	~13k datapoints recording weather metrics, used to predict the weather type (clear, cloudy, rain, snow)
+	
+Random Forrest Results:
+	RF Score (Train): 0.996
+	RF Score (Test): 0.915
+	OOB Score: 0.907
+	RF Score (Full Data): 0.996
+	OOB Score (Full Data): 0.911
+
+Feature Importance:
+	Clearly and rationally, temperature and precipitation have the highest significance
+
+Bagging Classifier:
+	Bagging Score (Train): 0.818
+	Bagging Score (Test): 0.824
+	Bagging Score (Full Data): 0.825
+
